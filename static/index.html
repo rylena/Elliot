@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Elliot - Live Terminal Assistant</title>
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body {
+      background-color: #0d1117;
+      color: #c9d1d9;
+      font-family: 'Courier New', monospace;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+    
+    .terminal-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #30363d;
+    }
+    
+    .chat-section {
+      width: 400px;
+      display: flex;
+      flex-direction: column;
+      background-color: #161b22;
+    }
+    
+    .terminal-header {
+      background-color: #21262d;
+      padding: 10px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .terminal-title {
+      color: #58a6ff;
+      font-weight: bold;
+    }
+    
+    .terminal-controls {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .control-btn {
+      background: #30363d;
+      border: 1px solid #484f58;
+      color: #c9d1d9;
+      padding: 5px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .control-btn:hover {
+      background: #484f58;
+    }
+    
+    .terminal-container {
+      flex: 1;
+      padding: 10px;
+      background-color: #0d1117;
+    }
+    
+    #terminal {
+      height: 100%;
+      width: 100%;
+    }
+    
+    .chat-header {
+      background-color: #21262d;
+      padding: 10px;
+      border-bottom: 1px solid #30363d;
+      color: #58a6ff;
+      font-weight: bold;
+    }
+    
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      background-color: #161b22;
+    }
+    
+    .message {
+      margin-bottom: 10px;
+      padding: 8px;
+      border-radius: 5px;
+      background-color: #21262d;
+    }
+    
+    .user-message {
+      border-left: 3px solid #58a6ff;
+    }
+    
+    .ai-message {
+      border-left: 3px solid #3fb950;
+    }
+    
+    .chat-input-area {
+      padding: 10px;
+      background-color: #21262d;
+      border-top: 1px solid #30363d;
+    }
+    
+    .chat-input-container {
+      display: flex;
+      gap: 10px;
+    }
+    
+    #chat-input {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 8px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .send-btn {
+      background: #238636;
+      border: 1px solid #2ea043;
+      color: white;
+      padding: 8px 15px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .send-btn:hover {
+      background: #2ea043;
+    }
+    
+    .status {
+      padding: 5px 10px;
+      font-size: 12px;
+      border-radius: 3px;
+      margin-bottom: 10px;
+    }
+    
+    .status.connected {
+      background-color: #238636;
+      color: white;
+    }
+    
+    .status.disconnected {
+      background-color: #f85149;
+      color: white;
+    }
+    
+    .status.connecting {
+      background-color: #d29922;
+      color: white;
+    }
+    
+    .loading {
+      color: #58a6ff;
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .chat-header .control-btn {
+      background: #30363d;
+      border: 1px solid #484f58;
+      color: #c9d1d9;
+      padding: 5px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    
+    .chat-header .control-btn:hover {
+      background: #484f58;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="terminal-section">
+      <div class="terminal-header">
+        <div class="terminal-title">💻 Live Terminal</div>
+        <div class="terminal-controls">
+          <button class="control-btn" onclick="clearTerminal()">Clear</button>
+          <button class="control-btn" onclick="resetTerminal()">Reset</button>
+        </div>
+      </div>
+      <div class="terminal-container">
+        <div id="terminal"></div>
+      </div>
+    </div>
+    
+    <div class="chat-section">
+      <div class="chat-header">
+        🤖 Elliot AI Assistant
+        <button class="control-btn" onclick="analyzeOutput()" style="float: right; margin-left: 10px;">Analyze Output</button>
+      </div>
+      <div class="chat-messages" id="chat-messages">
+        <div class="status connecting">Connecting to terminal...</div>
+      </div>
+      <div class="chat-input-area">
+        <div class="chat-input-container">
+          <input type="text" id="chat-input" placeholder="Ask Elliot or type a command..." autocomplete="off">
+          <button class="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let socket;
+    let terminal;
+    let sessionId;
+    
+    // Initialize terminal
+    function initTerminal() {
+      terminal = new Terminal({
+        cursorBlink: true,
+        fontSize: 14,
+        fontFamily: 'Courier New, monospace',
+        theme: {
+          background: '#0d1117',
+          foreground: '#c9d1d9',
+          cursor: '#58a6ff',
+          selection: '#30363d',
+          black: '#0d1117',
+          red: '#f85149',
+          green: '#3fb950',
+          yellow: '#d29922',
+          blue: '#58a6ff',
+          magenta: '#bc8cff',
+          cyan: '#39d353',
+          white: '#c9d1d9',
+          brightBlack: '#484f58',
+          brightRed: '#f85149',
+          brightGreen: '#3fb950',
+          brightYellow: '#d29922',
+          brightBlue: '#58a6ff',
+          brightMagenta: '#bc8cff',
+          brightCyan: '#39d353',
+          brightWhite: '#ffffff'
+        }
+      });
+      
+      terminal.open(document.getElementById('terminal'));
+      
+      // Handle terminal input
+      terminal.onData(data => {
+        if (socket && socket.connected) {
+          socket.emit('terminal_input', { input: data });
+        }
+      });
+      
+      // Handle terminal resize
+      terminal.onResize(size => {
+        if (socket && socket.connected) {
+          socket.emit('terminal_resize', { cols: size.cols, rows: size.rows });
+        }
+      });
+    }
+    
+    // Initialize WebSocket connection
+    function initSocket() {
+      socket = io();
+      
+      socket.on('connect', () => {
+        sessionId = socket.id;
+        updateStatus('connected', 'Connected to terminal');
+        addMessage('Elliot', 'Hello! I\'m Elliot, your AI terminal assistant. You can type commands directly in the terminal or ask me to help you with tasks.', 'ai');
+      });
+      
+      socket.on('disconnect', () => {
+        updateStatus('disconnected', 'Disconnected from terminal');
+      });
+      
+      socket.on('terminal_ready', (data) => {
+        sessionId = data.session_id;
+        updateStatus('connected', 'Terminal ready');
+      });
+      
+      socket.on('terminal_output', (data) => {
+        if (terminal) {
+          terminal.write(data.data);
+        }
+      });
+      
+      socket.on('terminal_error', (data) => {
+        addMessage('System', 'Error: ' + data.message, 'error');
+      });
+    }
+    
+    function updateStatus(type, message) {
+      const statusDiv = document.querySelector('.status');
+      statusDiv.className = `status ${type}`;
+      statusDiv.textContent = message;
+    }
+    
+    function addMessage(sender, message, type = 'ai') {
+      const chatMessages = document.getElementById('chat-messages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${type}-message`;
+      messageDiv.innerHTML = `<strong>${sender}:</strong> ${message}`;
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    async function sendMessage() {
+      const input = document.getElementById('chat-input');
+      const message = input.value.trim();
+      if (!message) return;
+      
+      addMessage('You', message, 'user');
+      input.value = '';
+      
+      // Show loading indicator
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'message ai-message';
+      loadingDiv.innerHTML = '<strong>Elliot:</strong> <span class="loading">Thinking...</span>';
+      document.getElementById('chat-messages').appendChild(loadingDiv);
+      document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+      
+      try {
+        console.log('Sending message:', message, 'Session ID:', sessionId); // Debug log
+        
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ 
+            message: message,
+            session_id: sessionId || 'default'
+          })
+        });
+        
+        console.log('Response status:', response.status); // Debug log
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Response data:', data); // Debug log
+        
+        // Remove loading indicator
+        loadingDiv.remove();
+        
+        if (data.command_executed) {
+          addMessage('Elliot', `I'll execute that for you: ${data.command}`, 'ai');
+        } else if (data.response) {
+          addMessage('Elliot', data.response, 'ai');
+        } else if (data.error) {
+          addMessage('System', 'Error: ' + data.error, 'error');
+        } else {
+          addMessage('System', 'No response from Elliot', 'error');
+        }
+      } catch (error) {
+        console.error('Error in sendMessage:', error); // Debug log
+        // Remove loading indicator
+        loadingDiv.remove();
+        addMessage('System', 'Error: ' + error.message, 'error');
+      }
+    }
+    
+    function clearTerminal() {
+      if (terminal) {
+        terminal.clear();
+      }
+    }
+    
+    function resetTerminal() {
+      if (terminal) {
+        terminal.clear();
+        terminal.write('\r\n');
+      }
+    }
+    
+    async function analyzeOutput() {
+      // Show loading indicator
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'message ai-message';
+      loadingDiv.innerHTML = '<strong>Elliot:</strong> <span class="loading">Analyzing output...</span>';
+      document.getElementById('chat-messages').appendChild(loadingDiv);
+      document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+      
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ 
+            session_id: sessionId || 'default',
+            question: 'What do you see in the terminal output? Please analyze the results and provide insights.'
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Remove loading indicator
+        loadingDiv.remove();
+        
+        if (data.response) {
+          addMessage('Elliot', data.response, 'ai');
+        } else if (data.error) {
+          addMessage('System', 'Error: ' + data.error, 'error');
+        }
+      } catch (error) {
+        console.error('Error analyzing output:', error);
+        // Remove loading indicator
+        loadingDiv.remove();
+        addMessage('System', 'Error: ' + error.message, 'error');
+      }
+    }
+    
+    // Handle Enter key in chat input
+    document.getElementById('chat-input').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+    
+    // Initialize everything
+    document.addEventListener('DOMContentLoaded', function() {
+      initTerminal();
+      initSocket();
+    });
+  </script>
+</body>
+</html>
