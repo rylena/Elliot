@@ -1,6 +1,6 @@
-# Elliot - AI Terminal Assistant
+# Elliot - AI Terminal hacker
 
-Elliot is an intelligent AI-powered terminal assistant that combines the power of natural language processing with direct terminal command execution. Built with Flask, LangChain, and Ollama, Elliot provides a modern web-based terminal interface with AI assistance.
+Elliot is an intelligent AI-powered hacker that combines the power of natural language processing with direct terminal command execution. Built with Flask, LangChain, and Ollama, Elliot provides a modern web-based terminal interface with AI assistance.
 
 ## Features
 
@@ -36,7 +36,7 @@ ollama serve
 
 4. Pull the required model:
 ```bash
-ollama pull phi:latest
+ollama pull llama2
 ```
 
 ## Usage
