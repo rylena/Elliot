@@ -110,6 +110,13 @@
       border-left: 3px solid #3fb950;
     }
     
+    .analysis-message {
+      background-color: #1c2128;
+      color: #7ee787;
+      border-left: 3px solid #238636;
+      font-style: italic;
+    }
+    
     .chat-input-area {
       padding: 10px;
       background-color: #21262d;
@@ -305,6 +312,10 @@
       socket.on('terminal_error', (data) => {
         addMessage('System', 'Error: ' + data.message, 'error');
       });
+      
+      socket.on('terminal_analysis', (data) => {
+        addMessage('Elliot', data.analysis, 'analysis');
+      });
     }
     
     function updateStatus(type, message) {
@@ -362,7 +373,7 @@
         loadingDiv.remove();
         
         if (data.command_executed) {
-          addMessage('Elliot', `I'll execute that for you: ${data.command}`, 'ai');
+          // Don't show anything for command execution - just execute silently
         } else if (data.response) {
           addMessage('Elliot', data.response, 'ai');
         } else if (data.error) {
