@@ -1,26 +1,38 @@
-# Elliot - Terminal Assistant
+# Elliot – AI-Powered Linux Command Companion
 
-## Quick Start
+Elliot is a tool that acts as a bridge between natural language and Linux terminal commands.  
+It allows you to type what you want in plain English and automatically translates that into the correct command, making the command line easier and more intuitive to use.
 
-1. Create venv and install deps:
-```
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+---
 
-2. Set environment variables (create `.env` or export):
-- GEMINI_API_KEY: your Gemini API key
-- GEMINI_MODEL (optional): defaults to `gemini-1.5-flash`
+## What is Elliot?
 
-3. Run:
-```
-GEMINI_API_KEY=YOUR_KEY python Elliot/app.py
-```
+Elliot is designed to make working with the Linux terminal simpler. Instead of memorizing complex commands, you can describe what you want to do in normal language, and Elliot will understand your request, generate the right command, and run it directly in your terminal.
 
-Or use the helper script:
-```
-bash run.sh
-```
+---
 
-App runs at http://127.0.0.1:5000 
+## Features
+
+- **Natural language to command:** Type what you want to do in English, and Elliot turns it into a valid Linux command.  
+- **Direct execution:** Commands are executed automatically in the terminal through the web interface.  
+- **AI understanding:** Elliot uses advanced language models to interpret what you mean.  
+- **Simple web interface:** Access everything from a clean and minimal web interface in your browser.
+
+---
+
+## Installation and Setup
+
+Follow these steps to install and run Elliot on your local machine:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/rylena/Elliot
+
+# 2. Go into the project folder
+cd Elliot
+
+# 3. Make the run script executable
+chmod +x ./run.sh
+
+# 4. Start the application
+./run.sh
