@@ -22,13 +22,13 @@ Elliot is designed to make working with the Linux terminal simpler. Instead of m
 
 ## Installation and Setup
 
-Follow these steps to install and run Elliot on your local machine:
+Download the latest release of Elliot from the Releases page and run it locally:
+
+Latest release: https://github.com/rylena/Elliot/releases/tag/Elliot
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/rylena/Elliot
-
-# 2. Go into the project folder
+# 1. Download the latest release archive (zip or tar.gz) from the link above
+# 2. Extract the archive, then go into the project folder
 cd Elliot
 
 # 3. Make the run script executable
@@ -36,3 +36,4 @@ chmod +x ./run.sh
 
 # 4. Start the application
 ./run.sh
+```
