@@ -1,0 +1,104 @@
+body {
+  background-color: #0d1117;
+  color: #c9d1d9;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  margin: 0;
+}
+
+.container.narrow {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.site-header {
+  border-bottom: 1px solid #30363d;
+  background: #0d1117;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0;
+}
+
+.brand .logo {
+  width: 42px;
+  height: 42px;
+}
+
+.brand-name {
+  font-weight: bold;
+  color: #58a6ff;
+  letter-spacing: 0.5px;
+}
+
+.nav a {
+  color: #c9d1d9;
+  text-decoration: none;
+  margin-left: 16px;
+}
+
+.nav a:hover { color: #58a6ff; }
+
+.hero {
+  padding: 64px 0 48px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(88,166,255,0.08), transparent 60%);
+}
+
+.hero h1 { margin: 0 0 10px; }
+.hero h2 { margin: 0 0 16px; color: #8ab4ff; font-weight: normal; }
+.tagline { color: #c9d1d9; margin-bottom: 24px; }
+
+.cta-row { display: flex; gap: 12px; justify-content: center; }
+.btn {
+  display: inline-block;
+  border: 1px solid #30363d;
+  padding: 10px 16px;
+  border-radius: 6px;
+  color: #c9d1d9;
+  text-decoration: none;
+}
+.btn.primary { background: #238636; border-color: #2ea043; color: #fff; }
+.btn:hover { background: #161b22; }
+.btn.primary:hover { background: #2ea043; }
+
+.section { padding: 40px 0; border-top: 1px solid #30363d; }
+
+.tech .tech-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 48px;
+}
+
+.tech .tech-card {
+  border: 1px solid #30363d;
+  background: #0b0f14;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.features .feature-list { list-style: none; padding: 0; margin: 0; }
+.features .feature-list li { padding: 8px 0; border-bottom: 1px dashed #30363d; }
+.features .feature-list li:last-child { border-bottom: none; }
+
+.docs pre.code {
+  background: #0b0f14;
+  border: 1px solid #30363d;
+  padding: 16px;
+  overflow-x: auto;
+  border-radius: 6px;
+}
+
+.site-footer { border-top: 1px solid #30363d; padding: 20px 0; text-align: center; }
+
+/* Prevent overlap between Technologies and Features sections */
+#features { padding-top: 48px; }
+#features .card { margin-top: 16px; }
+
