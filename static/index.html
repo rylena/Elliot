@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <title>Elliot</title>
   <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<<<<<<< HEAD
   <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/dist/xterm-addon-fit.min.js"></script>
+=======
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+>>>>>>> a649ff1 (fixing all the bugs)
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
   <link rel="stylesheet" href="/static/style.css" />
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -123,7 +127,8 @@
         }
       });
       socket.on('terminal_error', (data) => {
-        addMessage('System', 'Error: ' + data.message, 'error');
+        const msg = (data && (data.error || data.message)) ? (data.error || data.message) : 'Unknown terminal error';
+        addMessage('System', 'Error: ' + msg, 'error');
       });
       socket.on('terminal_analysis', (data) => {
         addMessage('Elliot', data.analysis, 'analysis');

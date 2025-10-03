@@ -16,7 +16,11 @@ app.config['SECRET_KEY'] = 'your-secret-key-here'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+<<<<<<< HEAD
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
+=======
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.0-flash')
+>>>>>>> a649ff1 (fixing all the bugs)
 if not GEMINI_API_KEY:
     raise RuntimeError('GEMINI_API_KEY is not set. Run via run.sh or export it in your environment.')
 genai.configure(api_key=GEMINI_API_KEY)
@@ -97,7 +101,12 @@ class TerminalManager:
                 os.dup2(slave, 0)
                 os.dup2(slave, 1)
                 os.dup2(slave, 2)
-                os.execvp('bash', ['bash'])
+                try:
+                    os.putenv('TERM', 'xterm-256color')
+                    os.putenv('PS1', '\\[\\e[1;32m\\]\\u@\\h \\[\\e[1;34m\\]\\w\\[\\e[0m\\]\\$ ')
+                except Exception:
+                    pass
+                os.execvp('bash', ['bash', '--noprofile', '--norc', '-i'])
             else:
                 os.close(slave)
                 fcntl.fcntl(master, fcntl.F_SETFL, os.O_NONBLOCK)
@@ -225,7 +234,10 @@ def is_command_completed(output_text):
 
 
 def detect_command_failure(output_text, command):
+<<<<<<< HEAD
     """Detect if a command failed or produced unexpected results"""
+=======
+>>>>>>> a649ff1 (fixing all the bugs)
     if not output_text:
         return False, "No output"
     
@@ -243,6 +255,14 @@ def detect_command_failure(output_text, command):
         r'error:',
         r'failed',
         r'Failed',
+<<<<<<< HEAD
+=======
+        r'not recognized as an internal or external command',
+        r'usage: ',
+        r'invalid option',
+        r'unrecognized option',
+        r'could not',
+>>>>>>> a649ff1 (fixing all the bugs)
     ]
     
     for pattern in error_patterns:
@@ -259,9 +279,19 @@ def detect_command_failure(output_text, command):
     return False, "Command appears successful"
 
 
+<<<<<<< HEAD
 def handle_sudo_password(session_id, sudo_password=None):
     if sudo_password is None:
         sudo_password = os.environ.get('SUDO_PASSWORD', 'Rylen2009')
+=======
+
+
+def handle_sudo_password(session_id, sudo_password=None):
+    if sudo_password is None:
+        sudo_password = os.environ.get('SUDO_PASSWORD')
+    if not sudo_password:
+        return
+>>>>>>> a649ff1 (fixing all the bugs)
     def check_and_input_password():
         max_wait = 10
         wait_time = 0
@@ -290,6 +320,7 @@ def schedule_auto_analyze(session_id, command, start_cursor, user_question: str 
             wait_time += check_interval
             try:
                 current_output, current_cursor = terminal_manager.get_output_since(session_id, start_cursor)
+                # Stop waiting once we see the exit marker or a prompt
                 if is_command_completed(current_output):
                     time.sleep(2)
                     break
@@ -303,6 +334,7 @@ def schedule_auto_analyze(session_id, command, start_cursor, user_question: str 
                     return
                 if len(clean_output.strip()) < 10:
                     return
+<<<<<<< HEAD
                 
                 failed, error_reason = detect_command_failure(clean_output, command)
                 
@@ -310,19 +342,42 @@ def schedule_auto_analyze(session_id, command, start_cursor, user_question: str 
                     corrected_command = generate_corrected_command(command, clean_output, user_question)
                     
                     if corrected_command != command:
+=======
+                # Determine failure based on patterns only
+                failed, error_reason = detect_command_failure(clean_output, command)
+                
+                if failed and retry_count < 1:  # Only retry once
+                    # Generate corrected command
+                    corrected_command = generate_corrected_command(command, clean_output, user_question)
+                    
+                    if corrected_command != command:
+                        # Send corrected command
+>>>>>>> a649ff1 (fixing all the bugs)
                         socketio.emit('terminal_analysis', {
                             'command': command,
                             'analysis': f"Command failed ({error_reason}). Trying corrected version: {corrected_command}",
                             'session_id': session_id
                         }, room=session_id)
                         
+<<<<<<< HEAD
+=======
+                        # Execute corrected command
+>>>>>>> a649ff1 (fixing all the bugs)
                         new_start_cursor = terminal_manager.get_output_cursor(session_id)
                         if terminal_manager.write_to_terminal(session_id, corrected_command + '\n'):
                             if corrected_command.strip().startswith('sudo'):
                                 handle_sudo_password(session_id)
+<<<<<<< HEAD
                             schedule_auto_analyze(session_id, corrected_command, new_start_cursor, user_question, retry_count + 1)
                         return
                 
+=======
+                            # Schedule analysis for the corrected command
+                            schedule_auto_analyze(session_id, corrected_command, new_start_cursor, user_question, retry_count + 1)
+                        return
+                
+                # Normal analysis for successful commands or after retry
+>>>>>>> a649ff1 (fixing all the bugs)
                 analysis_prompt = f"""
 You are Elliot, a Linux terminal assistant.
 
@@ -361,16 +416,27 @@ def validate_command(command: str) -> str:
     
     command = command.strip()
     
+<<<<<<< HEAD
     if command == 'cd':
         return 'cd ~' 
     if command.startswith('cd ') and len(command.split()) == 2:
+=======
+    # Handle incomplete cd commands
+    if command == 'cd':
+        return 'cd ~'  # Default to home directory
+    if command.startswith('cd ') and len(command.split()) == 2:
+        # cd command with directory is fine
+>>>>>>> a649ff1 (fixing all the bugs)
         return command
     
     return command
 
 
 def generate_corrected_command(original_command: str, error_output: str, user_question: str) -> str:
+<<<<<<< HEAD
     """Generate a corrected version of a failed command"""
+=======
+>>>>>>> a649ff1 (fixing all the bugs)
     correction_prompt = f"""
 You are Elliot, a Linux terminal assistant. The previous command failed. Generate a corrected version.
 
@@ -573,6 +639,6 @@ def handle_ai_command(data):
 
 if __name__ == '__main__':
     try:
-        socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+        socketio.run(app, debug=True, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
     finally:
         terminal_manager.cleanup_all()
