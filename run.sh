@@ -6,7 +6,7 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 
-export GEMINI_API_KEY="GEMINI_API_KEY_HERE"
+export GEMINI_API_KEY="AIzaSyCJKWDJeusZ6EcdWy97uTejsoGA0X1QMgQ"
 export GEMINI_MODEL="gemini-2.0-flash"
 export SUDO_PASSWORD=""
 

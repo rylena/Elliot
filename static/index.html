@@ -16,7 +16,7 @@
         <div class="terminal-title">💻 Live Terminal</div>
         <div class="terminal-controls">
           <button class="control-btn" onclick="clearTerminal()">Clear</button>
-          <button class="control-btn" onclick="resetTerminal()">Reset</button>
+          <button class="control-btn" onclick="restartProgram()">Restart</button>
         </div>
       </div>
       <div class="terminal-container">
@@ -45,6 +45,7 @@
     let terminal;
     let sessionId;
     let fitAddon;
+    let clientId;
 
     function initTerminal() {
       terminal = new Terminal({
@@ -103,6 +104,21 @@
       socket = io();
       socket.on('connect', () => {
         sessionId = socket.id;
+        // Ensure we have a stable clientId across reconnects
+        try {
+          clientId = localStorage.getItem('elliotClientId');
+          if (!clientId) {
+            clientId = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+              (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+            );
+            localStorage.setItem('elliotClientId', clientId);
+          }
+        } catch (e) {
+          // Fallback if localStorage/crypto unavailable
+          clientId = sessionId;
+        }
+        // Register this logical client so server uses a stable room
+        socket.emit('register_client', { client_id: clientId });
         updateStatus('connected', 'Connected to terminal');
         addMessage('Elliot', 'Hello! I\'m Elliot, your AI terminal assistant. You can type commands directly in the terminal or ask me to help you with tasks.', 'ai');
       });
@@ -110,7 +126,7 @@
         updateStatus('disconnected', 'Disconnected from terminal');
       });
       socket.on('terminal_ready', (data) => {
-        sessionId = data.session_id;
+        sessionId = data.session_id; // This will be clientId after registration
         updateStatus('connected', 'Terminal ready');
         // Ensure fit after connection/render
         if (fitAddon) {
@@ -128,6 +144,12 @@
       });
       socket.on('terminal_analysis', (data) => {
         addMessage('Elliot', data.analysis, 'analysis');
+      });
+      socket.on('menu_detected', (data) => {
+        showMenuDialog(data.question, data.options);
+      });
+      socket.on('menu_auto_selected', (data) => {
+        addMessage('Elliot', `Automatically selected option ${data.option}: ${data.label}`, 'analysis');
       });
     }
 
@@ -163,7 +185,7 @@
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ 
             message: message,
-            session_id: sessionId || 'default'
+            session_id: sessionId || clientId || 'default'
           })
         });
         if (!response.ok) {
@@ -191,10 +213,66 @@
       }
     }
 
-    function resetTerminal() {
-      if (terminal) {
-        terminal.clear();
-        terminal.write('\r\n');
+    async function restartProgram() {
+      if (!confirm('Are you sure you want to restart the entire program? This will disconnect all sessions.')) {
+        return;
+      }
+      
+      try {
+        addMessage('System', 'Restarting program...', 'system');
+        const response = await fetch('/api/restart', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'}
+        });
+        
+        if (response.ok) {
+          addMessage('System', 'Restart initiated. Please wait a few seconds and refresh the page.', 'system');
+          // Wait a moment then reload
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else {
+          throw new Error('Failed to restart');
+        }
+      } catch (error) {
+        addMessage('System', 'Error restarting: ' + error.message, 'error');
+      }
+    }
+
+    function showMenuDialog(question, options) {
+      const chatMessages = document.getElementById('chat-messages');
+      const menuDiv = document.createElement('div');
+      menuDiv.className = 'message menu-message';
+      menuDiv.innerHTML = `
+        <strong>Menu:</strong> ${question}<br>
+        <div class="menu-options" style="margin-top: 10px;">
+          ${options.map(opt => 
+            `<button class="menu-option-btn" onclick="selectMenuOption('${opt.value}')" style="
+              display: block;
+              width: 100%;
+              margin: 5px 0;
+              padding: 8px 12px;
+              background: #21262d;
+              border: 1px solid #30363d;
+              color: #c9d1d9;
+              border-radius: 6px;
+              cursor: pointer;
+              text-align: left;
+              font-size: 14px;
+            " onmouseover="this.style.background='#30363d'" onmouseout="this.style.background='#21262d'">
+              <strong>${opt.value}.</strong> ${opt.label}
+            </button>`
+          ).join('')}
+        </div>
+      `;
+      chatMessages.appendChild(menuDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function selectMenuOption(option) {
+      if (socket && socket.connected) {
+        socket.emit('menu_select', { option: option });
+        addMessage('You', `Selected option: ${option}`, 'user');
       }
     }
 

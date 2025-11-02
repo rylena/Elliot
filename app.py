@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room
 import os
 import google.generativeai as genai
 import pty
@@ -10,6 +10,8 @@ import signal
 import time
 import re
 import traceback
+import json
+import hashlib
 
 app = Flask(__name__, static_folder='static')
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -40,6 +42,7 @@ llm = GeminiWrapper()
 
 chat_histories = {}
 HISTORY_MAX_TURNS = 10
+sid_to_client_id: dict[str, str] = {}
 
 
 def build_history_prefix(session_id: str) -> str:
@@ -87,6 +90,10 @@ class TerminalManager:
         self.terminals = {}
         self.ai_mode = False
         self.output_buffer = {}
+        self.waiting_for_menu_selection = {}
+        self.last_user_question = {}
+        self.handled_menus = {}
+        self.last_menu_selection_time = {}
 
     def create_terminal(self, session_id):
         try:
@@ -110,7 +117,12 @@ class TerminalManager:
                     'master': master,
                     'pid': pid,
                     'buffer': '',
-                    'output': ''
+                    'output': '',
+                    'last_menu_check': 0,
+                    'menu_detected': False,
+                    'menu_output_cursor': 0,
+                    'last_output_length': 0,
+                    'output_stable_since': 0
                 }
                 threading.Thread(target=self._read_terminal, args=(session_id,), daemon=True).start()
                 return True
@@ -131,10 +143,33 @@ class TerminalManager:
                     if data:
                         output_data = data.decode(errors='ignore')
                         terminal['output'] += output_data
+                        terminal['last_output_length'] = len(terminal['output'])
+                        terminal['output_stable_since'] = 0
                         socketio.emit('terminal_output', {
                             'data': output_data,
                             'session_id': session_id
                         }, room=session_id)
+                        
+                        current_time = time.time()
+                        if current_time - terminal.get('last_menu_check', 0) > 1.0:
+                            terminal['last_menu_check'] = current_time
+                            if not terminal.get('menu_detected', False) and not self.waiting_for_menu_selection.get(session_id):
+                                self._check_for_menu(session_id)
+                else:
+                    current_time = time.time()
+                    if terminal:
+                        current_output_length = len(terminal.get('output', ''))
+                        if current_output_length == terminal.get('last_output_length', 0):
+                            if terminal.get('output_stable_since', 0) == 0:
+                                terminal['output_stable_since'] = current_time
+                            elif current_time - terminal.get('output_stable_since', 0) > 2.0:
+                                if current_time - terminal.get('last_menu_check', 0) > 1.0:
+                                    terminal['last_menu_check'] = current_time
+                                    if not terminal.get('menu_detected', False) and not self.waiting_for_menu_selection.get(session_id):
+                                        self._check_for_menu(session_id)
+                        else:
+                            terminal['last_output_length'] = current_output_length
+                            terminal['output_stable_since'] = 0
             except Exception as e:
                 print(f"Error reading terminal: {e}")
                 break
@@ -196,6 +231,216 @@ class TerminalManager:
                 cursor = len(out)
             return out[cursor:], len(out)
         return '', 0
+
+    def _check_for_menu(self, session_id):
+        """Check if terminal output shows a menu or interactive prompt"""
+        try:
+            terminal = self.terminals.get(session_id)
+            if not terminal:
+                return
+            
+            if self.waiting_for_menu_selection.get(session_id):
+                return
+            
+            output = self.get_output(session_id)
+            if not output or len(output) < 50:
+                return
+            
+            recent_output = output[-5000:]
+            clean_output = strip_ansi(recent_output)
+            
+            last_200_chars = clean_output[-200:]
+            has_prompt = is_command_completed(last_200_chars)
+            
+            if has_prompt:
+                return
+            
+            menu_region = clean_output[-1500:]
+            menu_hash = hashlib.md5(menu_region.encode()).hexdigest()
+            handled_hashes = self.handled_menus.get(session_id, set())
+            if menu_hash in handled_hashes:
+                return
+            
+            last_selection_time = self.last_menu_selection_time.get(session_id, 0)
+            if time.time() - last_selection_time < 1.0:
+                return
+            
+            menu_indicators = [
+                'select an option',
+                'choose an option',
+                'select option',
+                'choose option',
+                'press',
+                'enter your choice',
+                'select:',
+                'choice:',
+                'option',
+                'menu',
+            ]
+            
+            has_numbers = bool(re.search(r'\n\s*[0-9]+[\)\.\-\s:]+[A-Za-z]', clean_output, re.MULTILINE))
+            has_indicators = any(indicator.lower() in clean_output.lower() for indicator in menu_indicators)
+            
+            has_menu_pattern = bool(
+                re.search(r'\[[0-9]+\]', clean_output) or 
+                re.search(r'\([0-9]+\)', clean_output) or
+                re.search(r'^\s*[0-9]+[\.\)]\s+', clean_output, re.MULTILINE) or
+                re.search(r'^\s*[0-9]+\s+[A-Z]', clean_output, re.MULTILINE)
+            )
+            
+            output_stable_time = terminal.get('output_stable_since', 0)
+            has_been_stable = output_stable_time > 0 and (time.time() - output_stable_time) > 3.0
+            
+            if has_numbers or has_indicators or has_menu_pattern or (has_been_stable and len(clean_output) > 100):
+                terminal['menu_output_cursor'] = len(output)
+                self._detect_and_handle_menu(session_id, clean_output, menu_hash)
+        except Exception as e:
+            print(f"Error checking for menu: {e}")
+
+    def _detect_and_handle_menu(self, session_id, output_text, menu_hash=None):
+        """Use LLM to detect menu and extract options"""
+        try:
+            terminal = self.terminals.get(session_id)
+            if not terminal:
+                return
+            
+            terminal['menu_detected'] = True
+            self.waiting_for_menu_selection[session_id] = True
+            
+            if menu_hash:
+                if session_id not in self.handled_menus:
+                    self.handled_menus[session_id] = set()
+                self.handled_menus[session_id].add(menu_hash)
+            
+            user_context = self.last_user_question.get(session_id, '')
+            
+            menu_prompt = f"""
+You are analyzing terminal output to detect interactive menus.
+
+OUTPUT:
+{output_text[-2000:]}
+
+TASK: Determine if this is an interactive menu/prompt requiring user input. If yes, extract:
+1. All available options (numbered or labeled)
+2. A brief description of what the menu is asking
+
+Format your response as JSON:
+{{
+  "is_menu": true/false,
+  "question": "What is the menu asking?",
+  "options": [
+    {{"value": "1", "label": "Option 1 description"}},
+    {{"value": "2", "label": "Option 2 description"}}
+  ]
+}}
+
+If it's not a menu, set "is_menu": false.
+
+Return ONLY the JSON, no other text.
+"""
+            
+            response = llm.invoke(menu_prompt)
+            json_match = re.search(r'\{[\s\S]*\}', response)
+            if json_match:
+                try:
+                    menu_data = json.loads(json_match.group(0))
+                    if menu_data.get('is_menu') and menu_data.get('options'):
+                        self._handle_menu_options(session_id, menu_data, user_context)
+                        return
+                except json.JSONDecodeError:
+                    pass
+            
+            terminal['menu_detected'] = False
+            self.waiting_for_menu_selection[session_id] = False
+            
+        except Exception as e:
+            print(f"Error detecting menu: {e}")
+            terminal = self.terminals.get(session_id)
+            if terminal:
+                terminal['menu_detected'] = False
+            self.waiting_for_menu_selection[session_id] = False
+
+    def _handle_menu_options(self, session_id, menu_data, user_context):
+        """Handle menu options - always auto-select based on user's original request"""
+        try:
+            options = menu_data.get('options', [])
+            question = menu_data.get('question', 'Select an option')
+            
+            if not options:
+                terminal = self.terminals.get(session_id)
+                if terminal:
+                    terminal['menu_detected'] = False
+                self.waiting_for_menu_selection[session_id] = False
+                return
+            
+            history_prefix = build_history_prefix(session_id)
+            
+            auto_select_prompt = f"""
+You are Elliot, a Linux terminal assistant. A menu has appeared and you need to automatically select the best option based on the user's original request.
+
+USER'S ORIGINAL REQUEST: {user_context if user_context else "User is interacting with this application"}
+
+CONVERSATION HISTORY:
+{history_prefix}
+
+MENU QUESTION: {question}
+
+AVAILABLE OPTIONS:
+{chr(10).join([f"{opt.get('value', '')}. {opt.get('label', '')}" for opt in options])}
+
+TASK: Analyze the user's request and conversation history. Select the option that best matches what the user wants to accomplish. Be decisive - choose the most logical option even if not 100% certain.
+
+Return ONLY the option value (just the number/letter, e.g., "1", "2", "a", etc.) with no explanation or additional text.
+"""
+            auto_response = llm.invoke(auto_select_prompt).strip()
+            
+            auto_response = re.sub(r'[^0-9a-zA-Z]', '', auto_response)
+            
+            valid_values = [str(opt.get('value', '')).strip() for opt in options]
+            
+            selected_option = None
+            if auto_response in valid_values:
+                selected_option = auto_response
+            else:
+                for val in valid_values:
+                    if val.lower() == auto_response.lower():
+                        selected_option = val
+                        break
+                
+                if not selected_option:
+                    num_match = re.search(r'(\d+)', auto_response)
+                    if num_match:
+                        num_str = num_match.group(1)
+                        if num_str in valid_values:
+                            selected_option = num_str
+                    
+                    if not selected_option and len(valid_values) > 0:
+                        selected_option = valid_values[0]
+            
+            if selected_option:
+                selected_label = next((opt.get('label', '') for opt in options if str(opt.get('value', '')).strip() == selected_option), '')
+                socketio.emit('menu_auto_selected', {
+                    'session_id': session_id,
+                    'option': selected_option,
+                    'label': selected_label
+                }, room=session_id)
+                
+                self.write_to_terminal(session_id, selected_option + '\n')
+                
+                self.last_menu_selection_time[session_id] = time.time()
+                
+            terminal = self.terminals.get(session_id)
+            if terminal:
+                terminal['menu_detected'] = False
+            self.waiting_for_menu_selection[session_id] = False
+            
+        except Exception as e:
+            print(f"Error handling menu options: {e}")
+            traceback.print_exc()
+            terminal = self.terminals.get(session_id)
+            if terminal:
+                terminal['menu_detected'] = False
+            self.waiting_for_menu_selection[session_id] = False
 
 
 terminal_manager = TerminalManager()
@@ -303,7 +548,6 @@ def schedule_auto_analyze(session_id, command, start_cursor, user_question: str 
             wait_time += check_interval
             try:
                 current_output, current_cursor = terminal_manager.get_output_since(session_id, start_cursor)
-                # Stop waiting once we see the exit marker or a prompt
                 if is_command_completed(current_output):
                     time.sleep(2)
                     break
@@ -317,31 +561,25 @@ def schedule_auto_analyze(session_id, command, start_cursor, user_question: str 
                     return
                 if len(clean_output.strip()) < 10:
                     return
-                # Determine failure based on patterns only
                 failed, error_reason = detect_command_failure(clean_output, command)
                 
-                if failed and retry_count < 1:  # Only retry once
-                    # Generate corrected command
+                if failed and retry_count < 1:
                     corrected_command = generate_corrected_command(command, clean_output, user_question)
                     
                     if corrected_command != command:
-                        # Send corrected command
                         socketio.emit('terminal_analysis', {
                             'command': command,
                             'analysis': f"Command failed ({error_reason}). Trying corrected version: {corrected_command}",
                             'session_id': session_id
                         }, room=session_id)
                         
-                        # Execute corrected command
                         new_start_cursor = terminal_manager.get_output_cursor(session_id)
                         if terminal_manager.write_to_terminal(session_id, corrected_command + '\n'):
                             if corrected_command.strip().startswith('sudo'):
                                 handle_sudo_password(session_id)
-                            # Schedule analysis for the corrected command
                             schedule_auto_analyze(session_id, corrected_command, new_start_cursor, user_question, retry_count + 1)
                         return
                 
-                # Normal analysis for successful commands or after retry
                 analysis_prompt = f"""
 You are Elliot, a Linux terminal assistant.
 
@@ -380,11 +618,9 @@ def validate_command(command: str) -> str:
     
     command = command.strip()
     
-    # Handle incomplete cd commands
     if command == 'cd':
-        return 'cd ~'  # Default to home directory
+        return 'cd ~'
     if command.startswith('cd ') and len(command.split()) == 2:
-        # cd command with directory is fine
         return command
     
     return command
@@ -461,6 +697,15 @@ def chat():
             chat_histories.setdefault(session_id, []).append({'role': 'assistant', 'content': assistant_text})
 
             if command and len(command) > 2:
+                terminal_manager.last_user_question[session_id] = user_message
+                terminal = terminal_manager.terminals.get(session_id)
+                if terminal:
+                    terminal['menu_detected'] = False
+                    terminal['menu_output_cursor'] = 0
+                terminal_manager.waiting_for_menu_selection[session_id] = False
+                if session_id in terminal_manager.handled_menus:
+                    terminal_manager.handled_menus[session_id].clear()
+                terminal_manager.last_menu_selection_time[session_id] = 0
                 start_cursor = terminal_manager.get_output_cursor(session_id)
                 if terminal_manager.write_to_terminal(session_id, command + '\n'):
                     if command.strip().startswith('sudo'):
@@ -562,33 +807,72 @@ def index():
 
 @socketio.on('connect')
 def handle_connect():
-    session_id = request.sid
-    if terminal_manager.create_terminal(session_id):
-        emit('terminal_ready', {'session_id': session_id})
-    else:
-        emit('terminal_error', {'error': 'Failed to create terminal'})
+    emit('terminal_ready', {'session_id': request.sid})
 
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    session_id = request.sid
-    terminal_manager._cleanup_terminal(session_id)
+    sid = request.sid
+    client_id = sid_to_client_id.pop(sid, None)
+
+
+@socketio.on('register_client')
+def handle_register_client(data):
+    try:
+        client_id = data.get('client_id') if isinstance(data, dict) else None
+        if not client_id:
+            emit('terminal_error', {'error': 'Missing client_id in register_client'})
+            return
+        join_room(client_id)
+        sid_to_client_id[request.sid] = client_id
+        if client_id not in terminal_manager.terminals:
+            if not terminal_manager.create_terminal(client_id):
+                emit('terminal_error', {'error': 'Failed to create terminal'})
+                return
+        emit('terminal_ready', {'session_id': client_id}, room=client_id)
+        try:
+            buffered = terminal_manager.get_output(client_id)
+            if buffered:
+                tail = buffered[-10000:]
+                socketio.emit('terminal_output', {
+                    'data': tail,
+                    'session_id': client_id
+                }, room=client_id)
+        except Exception:
+            pass
+    except Exception as e:
+        emit('terminal_error', {'error': f'Failed to register client: {str(e)}'})
 
 
 @socketio.on('terminal_input')
 def handle_terminal_input(data):
-    session_id = request.sid
+    sid = request.sid
+    client_id = sid_to_client_id.get(sid, sid)
     user_input = data.get('input', '')
     if user_input:
-        terminal_manager.write_to_terminal(session_id, user_input)
+        terminal_manager.write_to_terminal(client_id, user_input)
 
 
 @socketio.on('ai_command')
 def handle_ai_command(data):
-    session_id = request.sid
+    sid = request.sid
+    client_id = sid_to_client_id.get(sid, sid)
     command = data.get('command', '')
     if command:
-        terminal_manager.write_to_terminal(session_id, command + '\n')
+        terminal_manager.write_to_terminal(client_id, command + '\n')
+
+
+@socketio.on('menu_select')
+def handle_menu_selection(data):
+    sid = request.sid
+    client_id = sid_to_client_id.get(sid, sid)
+    option = data.get('option', '')
+    if option:
+        terminal_manager.write_to_terminal(client_id, option + '\n')
+        terminal = terminal_manager.terminals.get(client_id)
+        if terminal:
+            terminal['menu_detected'] = False
+        terminal_manager.waiting_for_menu_selection[client_id] = False
 
 
 if __name__ == '__main__':
