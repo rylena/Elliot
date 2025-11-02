@@ -800,6 +800,22 @@ def test_llm():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/restart', methods=['POST'])
+def restart():
+    try:
+        terminal_manager.cleanup_all()
+        terminal_manager.terminals.clear()
+        terminal_manager.waiting_for_menu_selection.clear()
+        terminal_manager.last_user_question.clear()
+        terminal_manager.handled_menus.clear()
+        terminal_manager.last_menu_selection_time.clear()
+        sid_to_client_id.clear()
+        chat_histories.clear()
+        return jsonify({'success': True, 'message': 'Terminals cleaned up. Refresh the page to reconnect.'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/')
 def index():
     return send_from_directory('static', 'index.html')
