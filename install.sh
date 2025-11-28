@@ -69,10 +69,24 @@ cd "$INSTALL_DIR"
 echo "✓ Repository ready"
 echo ""
 
-if [ ! -f "$INSTALL_DIR/.env" ]; then
+SETUP_CONFIG=true
+if [ -f "$INSTALL_DIR/.env" ]; then
+    echo "Configuration file already exists."
+    read -p "Do you want to reconfigure the API key? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        SETUP_CONFIG=false
+        echo "Using existing configuration."
+    fi
+fi
+
+if [ "$SETUP_CONFIG" = "true" ]; then
     echo "=========================================="
     echo "  Configuration Required"
     echo "=========================================="
+    echo ""
+    echo "Please enter your Gemini API key."
+    echo "Get one at: https://aistudio.google.com/app/apikey"
     echo ""
     echo "Please enter your Gemini API key."
     echo "Get one at: https://aistudio.google.com/app/apikey"
@@ -83,6 +97,10 @@ if [ ! -f "$INSTALL_DIR/.env" ]; then
         echo "Error: API key cannot be empty."
         exit 1
     fi
+
+    echo ""
+    read -p "Enter port to host Elliot on [5000]: " port_choice
+    port_choice=${port_choice:-5000}
     
     cat > "$INSTALL_DIR/.env" <<EOF
 GEMINI_API_KEY=$api_key
@@ -90,11 +108,10 @@ GEMINI_MODEL=gemini-2.0-flash
 SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
 FLASK_ENV=production
 SUDO_PASSWORD=
+PORT=$port_choice
 EOF
     
     echo "✓ Configuration file created"
-else
-    echo "✓ Configuration file already exists"
 fi
 
 echo ""
@@ -131,7 +148,7 @@ User=$CURRENT_USER
 WorkingDirectory=$INSTALL_DIR
 Environment="PATH=$INSTALL_DIR/.venv/bin:/usr/local/bin:/usr/bin:/bin"
 EnvironmentFile=$INSTALL_DIR/.env
-ExecStart=$INSTALL_DIR/.venv/bin/gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:5000 --timeout 120 app:app
+ExecStart=/bin/bash -c 'source $INSTALL_DIR/.env && $INSTALL_DIR/.venv/bin/gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:${PORT:-5000} --timeout 120 app:app'
 Restart=always
 RestartSec=10
 

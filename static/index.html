@@ -1,32 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Elliot</title>
   <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css" />
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
+
 <body>
   <div class="container">
     <div class="terminal-section">
       <div class="terminal-header">
-        <div class="terminal-title">💻 Live Terminal</div>
+        <div class="terminal-title">Terminal</div>
         <div class="terminal-controls">
-          <button class="control-btn" onclick="clearTerminal()">Clear</button>
-          <button class="control-btn" onclick="restartProgram()">Restart</button>
+          <button class="control-btn" onclick="clearTerminal()" title="Clear Terminal">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+            </svg>
+          </button>
+          <button class="control-btn" onclick="restartProgram()" title="Restart System">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6M1 20v-6h6" />
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+            </svg>
+          </button>
         </div>
       </div>
       <div class="terminal-container">
         <div id="terminal"></div>
       </div>
     </div>
-    
+
     <div class="chat-section">
       <div class="chat-header">
-        🤖 Elliot
+        <div class="chat-title">
+          <span class="status-dot connected"></span>
+          Elliot AI
+        </div>
       </div>
       <div class="chat-messages" id="chat-messages">
         <div class="status connecting">Connecting to terminal...</div>
@@ -34,7 +51,11 @@
       <div class="chat-input-area">
         <div class="chat-input-container">
           <input type="text" id="chat-input" placeholder="Ask Elliot or type a command..." autocomplete="off">
-          <button class="send-btn" onclick="sendMessage()">Send</button>
+          <button class="send-btn" onclick="sendMessage()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>
@@ -108,7 +129,7 @@
         try {
           clientId = localStorage.getItem('elliotClientId');
           if (!clientId) {
-            clientId = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+            clientId = ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
               (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
             );
             localStorage.setItem('elliotClientId', clientId);
@@ -182,8 +203,8 @@
       try {
         const response = await fetch('/api/chat', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ 
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             message: message,
             session_id: sessionId || clientId || 'default'
           })
@@ -217,14 +238,14 @@
       if (!confirm('Are you sure you want to restart the entire program? This will disconnect all sessions.')) {
         return;
       }
-      
+
       try {
         addMessage('System', 'Restarting program...', 'system');
         const response = await fetch('/api/restart', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'}
+          headers: { 'Content-Type': 'application/json' }
         });
-        
+
         if (response.ok) {
           addMessage('System', 'Restart initiated. Please wait a few seconds and refresh the page.', 'system');
           // Wait a moment then reload
@@ -246,8 +267,8 @@
       menuDiv.innerHTML = `
         <strong>Menu:</strong> ${question}<br>
         <div class="menu-options" style="margin-top: 10px;">
-          ${options.map(opt => 
-            `<button class="menu-option-btn" onclick="selectMenuOption('${opt.value}')" style="
+          ${options.map(opt =>
+        `<button class="menu-option-btn" onclick="selectMenuOption('${opt.value}')" style="
               display: block;
               width: 100%;
               margin: 5px 0;
@@ -262,7 +283,7 @@
             " onmouseover="this.style.background='#30363d'" onmouseout="this.style.background='#21262d'">
               <strong>${opt.value}.</strong> ${opt.label}
             </button>`
-          ).join('')}
+      ).join('')}
         </div>
       `;
       chatMessages.appendChild(menuDiv);
@@ -277,16 +298,17 @@
     }
 
 
-    document.getElementById('chat-input').addEventListener('keypress', function(e) {
+    document.getElementById('chat-input').addEventListener('keypress', function (e) {
       if (e.key === 'Enter') {
         sendMessage();
       }
     });
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       initTerminal();
       initSocket();
     });
   </script>
 </body>
+
 </html>

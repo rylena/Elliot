@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elliot - AI-Powered Linux Command Companion</title>
+    <meta name="description"
+        content="Transform natural language into Linux commands with AI. Elliot makes the terminal accessible to everyone.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    <div class="intro-overlay">
+        <h1 class="intro-title">ELLIOT</h1>
+    </div>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#home" class="nav-logo">Elliot</a>
+            <ul class="nav-menu">
+                <li><a href="#home" class="nav-link">Overview</a></li>
+                <li><a href="#features" class="nav-link">Features</a></li>
+                <li><a href="#install" class="nav-link">Install</a></li>
+                <li><a href="https://github.com/rylena/Elliot" class="nav-link" target="_blank">GitHub</a></li>
+            </ul>
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <span class="hamburger"></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container" id="home">
+        <header class="hero">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <div class="badge">v1.0.0 Available Now</div>
+                    <h1 class="title">Command Line,<br>Reimagined.</h1>
+                    <p class="subtitle">Transform natural language into complex terminal commands with AI. Built for
+                        developers who want to move faster.</p>
+                    <div class="hero-actions">
+                        <button class="btn btn-primary" onclick="scrollToInstall()">Get Started</button>
+                        <a href="https://github.com/rylena/Elliot" class="btn btn-secondary" target="_blank">View
+                            Source</a>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <div class="terminal-window">
+                        <div class="terminal-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                        </div>
+                        <div class="terminal-body">
+                            <div class="command-line">
+                                <span class="prompt">➜</span> <span class="cmd">elliot "find all large files over
+                                    100MB"</span>
+                            </div>
+                            <div class="output">
+                                <span class="ai-response">Suggested command:</span>
+                                <span class="code">find . -type f -size +100M</span>
+                                <span class="cursor">_</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="community-strip">
+            <p>Built for modern development workflows</p>
+            <div class="tech-icons">
+                <span>Linux</span>
+                <span class="separator">•</span>
+                <span>Bash</span>
+                <span class="separator">•</span>
+                <span>Python</span>
+                <span class="separator">•</span>
+                <span>Gemini AI</span>
+            </div>
+        </div>
+
+        <section class="install-section" id="install">
+            <div class="section-header center">
+                <h2>Ready to Start?</h2>
+                <p>Install Elliot in seconds with a single command.</p>
+            </div>
+
+            <div class="code-box">
+                <div class="code-header">
+                    <span class="code-label">Terminal</span>
+                    <button class="copy-btn" onclick="copyCode()">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path
+                                d="M5.5 4.5H2.5C2.22386 4.5 2 4.72386 2 5V13.5C2 13.7761 2.22386 14 2.5 14H10.5C10.7761 14 11 13.7761 11 13.5V10.5"
+                                stroke="currentColor" stroke-width="1.5" />
+                            <path
+                                d="M5.5 2H13.5C13.7761 2 14 2.22386 14 2.5V10.5C14 10.7761 13.7761 11 13.5 11H5.5C5.22386 11 5 10.7761 5 10.5V2.5C5 2.22386 5.22386 2 5.5 2Z"
+                                stroke="currentColor" stroke-width="1.5" />
+                        </svg>
+                        Copy
+                    </button>
+                </div>
+                <pre class="code-content"
+                    id="install-code">curl -fsSL https://raw.githubusercontent.com/rylena/Elliot/main/install.sh | bash</pre>
+            </div>
+        </section>
+
+        <section class="features-section" id="features">
+            <div class="section-header">
+                <h2>Designed for Speed</h2>
+                <p>Everything you need to master the terminal.</p>
+            </div>
+
+            <div class="bento-grid">
+                <div class="bento-item large">
+                    <div class="bento-content">
+                        <div class="icon-wrapper">💬</div>
+                        <h3>Natural Language Processing</h3>
+                        <p>Stop memorizing flags. Just describe what you want to do in plain English.</p>
+
+                        <div class="nlp-visual">
+                            <div class="nlp-step">
+                                <span class="nlp-label">Input</span>
+                                <div class="nlp-box input">"Delete all pngs in this folder"</div>
+                            </div>
+                            <div class="nlp-arrow">↓</div>
+                            <div class="nlp-step">
+                                <span class="nlp-label">Command</span>
+                                <div class="nlp-box output">rm *.png</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bento-item">
+                    <div class="bento-content">
+                        <div class="icon-wrapper">⚡</div>
+                        <h3>Instant Execution</h3>
+                        <p>Commands run directly in your active terminal session.</p>
+                    </div>
+                </div>
+                <div class="bento-item">
+                    <div class="bento-content">
+                        <div class="icon-wrapper">🛡️</div>
+                        <h3>Safety First</h3>
+                        <p>Review every command before it executes. You're always in control.</p>
+                    </div>
+                </div>
+                <div class="bento-item wide">
+                    <div class="bento-content">
+                        <div class="icon-wrapper">🧠</div>
+                        <h3>Context Aware</h3>
+                        <p>Elliot understands your file system and previous commands for smarter suggestions.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="journey-section" id="journey">
+            <div class="section-header">
+                <h2>The Journey</h2>
+                <p>From a simple idea to a powerful tool.</p>
+            </div>
+
+            <div class="journey-grid">
+                <div class="journey-card highlight">
+                    <h3>Why I Built Elliot</h3>
+                    <p>
+                        The Linux terminal is powerful but intimidating. I wanted to create a tool that makes the
+                        command line
+                        accessible to everyone—from beginners learning their first commands to experienced users who
+                        just want
+                        to work faster. Elliot removes the barrier between what you want to do and how to do it.
+                    </p>
+                </div>
+
+                <div class="journey-card">
+                    <h3>What I Learned</h3>
+                    <ul class="learning-list">
+                        <li>
+                            <span class="learning-icon">🔌</span>
+                            <div>
+                                <strong>Real-time WebSockets</strong>
+                                <p>Building responsive terminal streams with Flask-SocketIO.</p>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="learning-icon">🤖</span>
+                            <div>
+                                <strong>Prompt Engineering</strong>
+                                <p>Fine-tuning LLM prompts for accurate command generation.</p>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="learning-icon">🐚</span>
+                            <div>
+                                <strong>System Integration</strong>
+                                <p>Managing PTYs and systemd services for seamless OS interaction.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="journey-card wide">
+                    <h3>Tech Stack</h3>
+                    <div class="tech-stack-visual">
+                        <span class="tech-badge">Python</span>
+                        <span class="tech-badge">Flask</span>
+                        <span class="tech-badge">SocketIO</span>
+                        <span class="tech-badge">Gemini AI</span>
+                        <span class="tech-badge">Bash</span>
+                        <span class="tech-badge">Systemd</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="cta-section">
+            <div class="cta-content">
+                <h2>Supercharge your terminal today.</h2>
+                <p>Join developers who are moving faster with AI-powered commands.</p>
+                <div class="cta-actions">
+                    <button class="btn btn-primary" onclick="scrollToInstall()">Install Now</button>
+                    <a href="https://github.com/rylena/Elliot" class="btn btn-secondary" target="_blank">Star on
+                        GitHub</a>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <div class="footer-grid">
+                <div class="footer-col brand">
+                    <span class="footer-logo">Elliot</span>
+                    <p>AI-Powered Linux Command Companion</p>
+                    <div class="social-links">
+                        <a href="https://github.com/rylena/Elliot" target="_blank">GitHub</a>
+                        <a href="https://twitter.com" target="_blank">Twitter</a>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <a href="#features">Features</a>
+                    <a href="#install">Install</a>
+                    <a href="#">Changelog</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Resources</h4>
+                    <a href="#">Documentation</a>
+                    <a href="#">Community</a>
+                    <a href="#">Blog</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <a href="#">Privacy</a>
+                    <a href="#">Terms</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Elliot. Built by <a href="https://github.com/rylena" target="_blank">rylena</a>.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        function copyCode() {
+            const code = document.getElementById('install-code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M13.5 4.5L6 12L2.5 8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Copied!
+                `;
+                btn.classList.add('copied');
+
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        function scrollToInstall() {
+            document.querySelector('.install-section').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+
+        // Mobile Navigation Toggle
+        document.addEventListener('DOMContentLoaded', () => {
+            const navToggle = document.querySelector('.nav-toggle');
+            const navMenu = document.querySelector('.nav-menu');
+
+            if (navToggle) {
+                navToggle.addEventListener('click', () => {
+                    navMenu.classList.toggle('active');
+                    navToggle.classList.toggle('active');
+                });
+            }
+
+            // Close menu when clicking a link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    navMenu.classList.remove('active');
+                    navToggle.classList.remove('active');
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

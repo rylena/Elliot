@@ -62,9 +62,10 @@ elif [ "$MODE" = "production" ] || [ "$MODE" = "prod" ]; then
     # Use gunicorn with eventlet worker for WebSocket support
     # -w 1: Single worker (required for pty/terminal management)
     # -k eventlet: Async worker class for WebSocket support
-    # --bind 0.0.0.0:5000: Listen on all interfaces, port 5000
+    # --bind 0.0.0.0:PORT: Listen on all interfaces, port from env or 5000
     # --timeout 120: Increase timeout for long-running terminal commands
-    gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:5000 --timeout 120 app:app
+    PORT="${PORT:-5000}"
+    gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT --timeout 120 app:app
 else
     echo "Usage: ./run.sh [production|dev]"
     echo "  production (default): Run with gunicorn for production deployment"
