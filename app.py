@@ -14,8 +14,8 @@ import json
 import hashlib
 
 app = Flask(__name__, static_folder='static')
-app.config['SECRET_KEY'] = 'your-secret-key-here'
-socketio = SocketIO(app, cors_allowed_origins="*")
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.0-flash')
@@ -893,6 +893,8 @@ def handle_menu_selection(data):
 
 if __name__ == '__main__':
     try:
-        socketio.run(app, debug=True, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
+        # For development only - use gunicorn for production
+        debug_mode = os.environ.get('FLASK_ENV') == 'development'
+        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=5000)
     finally:
         terminal_manager.cleanup_all()
