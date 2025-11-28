@@ -113,8 +113,9 @@ fi
 
 echo ""
 
-if [ ! -d "$INSTALL_DIR/.venv" ]; then
+if [ ! -f "$INSTALL_DIR/.venv/bin/activate" ]; then
     echo "Creating Python virtual environment..."
+    rm -rf "$INSTALL_DIR/.venv"
     python3 -m venv "$INSTALL_DIR/.venv"
     echo "✓ Virtual environment created"
 else
