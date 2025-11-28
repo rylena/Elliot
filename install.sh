@@ -163,6 +163,25 @@ sudo systemctl enable elliot.service
 sudo systemctl start elliot.service
 
 echo ""
+
+# Firewall Configuration
+if command -v ufw >/dev/null 2>&1; then
+    if sudo ufw status | grep -q "Status: active"; then
+        echo "Firewall (ufw) is active."
+        PORT_NUM=${PORT:-5000}
+        read -p "Would you like to allow traffic on port $PORT_NUM? (y/n) " -n 1 -r < /dev/tty
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            sudo ufw allow $PORT_NUM/tcp
+            echo "✓ Port $PORT_NUM allowed"
+        fi
+    fi
+fi
+
+# Get LAN IP
+LAN_IP=$(hostname -I | awk '{print $1}')
+
+echo ""
 echo "=========================================="
 echo "  Installation Complete!"
 echo "=========================================="
@@ -178,7 +197,11 @@ echo "  Start:   sudo systemctl start elliot"
 echo "  Restart: sudo systemctl restart elliot"
 echo "  Logs:    sudo journalctl -u elliot -f"
 echo ""
-echo "Access Elliot at: http://localhost:5000"
+echo "Access Elliot at:"
+echo "  Local:   http://localhost:${PORT:-5000}"
+if [ ! -z "$LAN_IP" ]; then
+    echo "  Network: http://$LAN_IP:${PORT:-5000}"
+fi
 echo ""
 
 sleep 2
