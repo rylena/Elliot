@@ -22,7 +22,7 @@ echo ""
 
 if ! command -v git >/dev/null 2>&1; then
     echo "Git is not installed."
-    read -p "Would you like to install Git? (y/n) " -n 1 -r
+    read -p "Would you like to install Git? (y/n) " -n 1 -r < /dev/tty
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         sudo apt update
@@ -35,7 +35,7 @@ fi
 
 if ! command -v python3 >/dev/null 2>&1; then
     echo "Python 3 is not installed."
-    read -p "Would you like to install Python 3? (y/n) " -n 1 -r
+    read -p "Would you like to install Python 3? (y/n) " -n 1 -r < /dev/tty
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         sudo apt update
@@ -51,7 +51,7 @@ echo ""
 
 if [ -d "$INSTALL_DIR" ]; then
     echo "Elliot directory already exists."
-    read -p "Would you like to update it? (y/n) " -n 1 -r
+    read -p "Would you like to update it? (y/n) " -n 1 -r < /dev/tty
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "Updating Elliot..."
@@ -72,7 +72,7 @@ echo ""
 SETUP_CONFIG=true
 if [ -f "$INSTALL_DIR/.env" ]; then
     echo "Configuration file already exists."
-    read -p "Do you want to reconfigure the API key? (y/n) " -n 1 -r
+    read -p "Do you want to reconfigure the API key? (y/n) " -n 1 -r < /dev/tty
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         SETUP_CONFIG=false
@@ -88,10 +88,7 @@ if [ "$SETUP_CONFIG" = "true" ]; then
     echo "Please enter your Gemini API key."
     echo "Get one at: https://aistudio.google.com/app/apikey"
     echo ""
-    echo "Please enter your Gemini API key."
-    echo "Get one at: https://aistudio.google.com/app/apikey"
-    echo ""
-    read -p "Gemini API Key: " api_key
+    read -p "Gemini API Key: " api_key < /dev/tty
     
     if [ -z "$api_key" ]; then
         echo "Error: API key cannot be empty."
@@ -99,7 +96,7 @@ if [ "$SETUP_CONFIG" = "true" ]; then
     fi
 
     echo ""
-    read -p "Enter port to host Elliot on [5000]: " port_choice
+    read -p "Enter port to host Elliot on [5000]: " port_choice < /dev/tty
     port_choice=${port_choice:-5000}
     
     cat > "$INSTALL_DIR/.env" <<EOF
