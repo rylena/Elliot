@@ -62,7 +62,17 @@ if [ -d "$INSTALL_DIR" ]; then
     fi
 else
     echo "Cloning Elliot repository..."
-    git clone "$REPO_URL" "$INSTALL_DIR"
+    # Check if installing from local source
+    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+    if [ -f "$SCRIPT_DIR/app.py" ] && [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
+        echo "Installing from local directory: $SCRIPT_DIR"
+        # Create directory
+        mkdir -p "$INSTALL_DIR"
+        # Copy files excluding .git, .venv, .elliot, and __pycache__
+        rsync -av --progress "$SCRIPT_DIR/" "$INSTALL_DIR/" --exclude .git --exclude .venv --exclude .elliot --exclude __pycache__ --exclude "*.pyc"
+    else
+        git clone "$REPO_URL" "$INSTALL_DIR"
+    fi
 fi
 
 cd "$INSTALL_DIR"
