@@ -1,20 +1,18 @@
-# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.pytest_cache/
 
-# Virtual env
 .venv/
 venv/
 ENV/
 
-# Local env/secrets
+
 .env
 .env.*
+settings.json
 
-# OS/Editor
 .DS_Store
 Thumbs.db
 *.swp
@@ -22,11 +20,9 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Logs
 *.log
 nohup.out
 
-# Node/web build artifacts (if any)
 dist/
 build/
 .node_modules/

@@ -92,15 +92,10 @@ if [ "$SETUP_CONFIG" = "true" ]; then
     echo "  Configuration Required"
     echo "=========================================="
     echo ""
-    echo "Please enter your Gemini API key."
-    echo "Get one at: https://aistudio.google.com/app/apikey"
+    echo "Please enter your Gemini API key (Optional)."
+    echo "You can also configure this later in the Web UI."
     echo ""
-    read -p "Gemini API Key: " api_key < /dev/tty
-    
-    if [ -z "$api_key" ]; then
-        echo "Error: API key cannot be empty."
-        exit 1
-    fi
+    api_key=""
 
     echo ""
     read -p "Enter port to host Elliot on [5000]: " port_choice < /dev/tty
@@ -172,7 +167,6 @@ sudo systemctl start elliot.service
 
 echo ""
 
-# Firewall Configuration
 if command -v ufw >/dev/null 2>&1; then
     if sudo ufw status | grep -q "Status: active"; then
         echo "Firewall (ufw) is active."
@@ -186,7 +180,6 @@ if command -v ufw >/dev/null 2>&1; then
     fi
 fi
 
-# Get LAN IP
 LAN_IP=$(hostname -I | awk '{print $1}')
 
 echo ""
@@ -226,3 +219,4 @@ echo "  sudo systemctl stop elliot && sudo systemctl disable elliot"
 echo "  sudo rm /etc/systemd/system/elliot.service"
 echo "  rm -rf $INSTALL_DIR"
 echo ""
+

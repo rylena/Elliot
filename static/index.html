@@ -31,6 +31,13 @@
               <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
             </svg>
           </button>
+          <button class="control-btn" onclick="openSettings()" title="Settings">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+              <path
+                d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+            </svg>
+          </button>
         </div>
       </div>
       <div class="terminal-container">
@@ -56,6 +63,52 @@
               <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
             </svg>
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="settings-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <span class="close-btn" onclick="closeSettings()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="provider-select">LLM Provider</label>
+          <select id="provider-select" onchange="toggleApiFields()">
+            <option value="gemini">Google Gemini</option>
+            <option value="claude">Anthropic Claude</option>
+            <option value="openai">OpenAI GPT-4</option>
+            <option value="grok">xAI Grok</option>
+          </select>
+        </div>
+
+        <div id="gemini-field" class="api-field">
+          <label for="gemini-key">Gemini API Key</label>
+          <input type="password" id="gemini-key" placeholder="Enter Gemini API Key">
+        </div>
+
+        <div id="claude-field" class="api-field" style="display:none;">
+          <label for="claude-key">Claude API Key</label>
+          <input type="password" id="claude-key" placeholder="Enter Claude API Key">
+        </div>
+
+        <div id="openai-field" class="api-field" style="display:none;">
+          <label for="openai-key">OpenAI API Key</label>
+          <input type="password" id="openai-key" placeholder="Enter OpenAI API Key">
+        </div>
+
+        <div id="grok-field" class="api-field" style="display:none;">
+          <label for="grok-key">Grok API Key</label>
+          <input type="password" id="grok-key" placeholder="Enter Grok API Key">
+        </div>
+
+        <div class="form-actions">
+          <button class="save-btn" onclick="saveSettings()">Save Settings</button>
+          <button class="cancel-btn" onclick="closeSettings()">Cancel</button>
         </div>
       </div>
     </div>
@@ -304,9 +357,122 @@
       }
     });
 
+    // Settings Functions
+    function openSettings(force = false) {
+      const modal = document.getElementById('settings-modal');
+      modal.style.display = 'block';
+
+      const closeBtn = document.querySelector('.close-btn');
+      const cancelBtn = document.querySelector('.cancel-btn');
+
+      if (force) {
+        closeBtn.style.display = 'none';
+        cancelBtn.style.display = 'none';
+        // Add message if not exists
+        if (!document.getElementById('force-settings-msg')) {
+          const msg = document.createElement('div');
+          msg.id = 'force-settings-msg';
+          msg.className = 'status disconnected';
+          msg.style.marginBottom = '20px';
+          msg.innerText = 'Please configure an API key to continue.';
+          document.querySelector('.modal-body').prepend(msg);
+        }
+      } else {
+        closeBtn.style.display = 'block';
+        cancelBtn.style.display = 'inline-block';
+        const msg = document.getElementById('force-settings-msg');
+        if (msg) msg.remove();
+      }
+
+      // Fetch current settings
+      fetch('/api/settings')
+        .then(response => response.json())
+        .then(data => {
+          if (data.provider) {
+            document.getElementById('provider-select').value = data.provider;
+          }
+          if (data.gemini_api_key) document.getElementById('gemini-key').value = data.gemini_api_key;
+          if (data.claude_api_key) document.getElementById('claude-key').value = data.claude_api_key;
+          if (data.openai_api_key) document.getElementById('openai-key').value = data.openai_api_key;
+          if (data.grok_api_key) document.getElementById('grok-key').value = data.grok_api_key;
+
+          toggleApiFields();
+
+          // Check if any key is set
+          const hasKey = data.gemini_api_key || data.claude_api_key || data.openai_api_key || data.grok_api_key;
+          if (!hasKey && !force) {
+            // If opened manually but no key, maybe warn? But for now just show.
+          }
+        })
+        .catch(err => console.error('Error fetching settings:', err));
+    }
+
+    function closeSettings() {
+      // Prevent closing if forced (check if force message exists as a proxy, or check keys)
+      if (document.getElementById('force-settings-msg')) {
+        return;
+      }
+      document.getElementById('settings-modal').style.display = 'none';
+    }
+
+    function toggleApiFields() {
+      const provider = document.getElementById('provider-select').value;
+      document.querySelectorAll('.api-field').forEach(el => el.style.display = 'none');
+      document.getElementById(`${provider}-field`).style.display = 'block';
+    }
+
+    function saveSettings() {
+      const provider = document.getElementById('provider-select').value;
+      const data = {
+        provider: provider,
+        gemini_api_key: document.getElementById('gemini-key').value,
+        claude_api_key: document.getElementById('claude-key').value,
+        openai_api_key: document.getElementById('openai-key').value,
+        grok_api_key: document.getElementById('grok-key').value
+      };
+
+      fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+        .then(response => response.json())
+        .then(result => {
+          if (result.success) {
+            alert('Settings saved successfully!');
+            closeSettings();
+          } else {
+            alert('Failed to save settings.');
+          }
+        })
+        .catch(err => {
+          console.error('Error saving settings:', err);
+          alert('Error saving settings.');
+        });
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function (event) {
+      const modal = document.getElementById('settings-modal');
+      if (event.target == modal) {
+        closeSettings();
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
       initTerminal();
       initSocket();
+
+      // Check for API keys on load
+      fetch('/api/settings')
+        .then(response => response.json())
+        .then(data => {
+          const hasKey = data.gemini_api_key || data.claude_api_key || data.openai_api_key || data.grok_api_key;
+          if (!hasKey) {
+            openSettings(true);
+          }
+        })
+        .catch(err => console.error('Error checking settings:', err));
     });
   </script>
 </body>

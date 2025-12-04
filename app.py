@@ -12,33 +12,159 @@ import re
 import traceback
 import json
 import hashlib
+try:
+    import openai
+except ImportError:
+    openai = None
+try:
+    import anthropic
+except ImportError:
+    anthropic = None
+
 
 app = Flask(__name__, static_folder='static')
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.0-flash')
-if not GEMINI_API_KEY:
-    raise RuntimeError('GEMINI_API_KEY is not set. Run via run.sh or export it in your environment.')
-genai.configure(api_key=GEMINI_API_KEY)
+
+class SettingsManager:
+    SETTINGS_FILE = 'settings.json'
+
+    @staticmethod
+    def load_settings():
+        if os.path.exists(SettingsManager.SETTINGS_FILE):
+            try:
+                with open(SettingsManager.SETTINGS_FILE, 'r') as f:
+                    return json.load(f)
+            except:
+                return {}
+        return {}
+
+    @staticmethod
+    def save_settings(settings):
+        with open(SettingsManager.SETTINGS_FILE, 'w') as f:
+            json.dump(settings, f, indent=2)
+
+    @staticmethod
+    def get_api_key(provider):
+        settings = SettingsManager.load_settings()
+        return settings.get(f'{provider}_api_key')
 
 
-class GeminiWrapper:
-    def __init__(self, model_name: str = None):
-        self.model_name = model_name or GEMINI_MODEL
-        self.model = genai.GenerativeModel(self.model_name)
+class LLMWrapper:
+    def invoke(self, prompt: str) -> str:
+        raise NotImplementedError
+
+
+class GeminiWrapper(LLMWrapper):
+    def __init__(self, api_key):
+        if not api_key:
+             api_key = os.environ.get('GEMINI_API_KEY')
+        
+        if not api_key:
+            print("Warning: Gemini API key not found")
+            self.model = None
+            return
+
+        try:
+            genai.configure(api_key=api_key)
+            self.model = genai.GenerativeModel(os.environ.get('GEMINI_MODEL', 'gemini-2.0-flash'))
+        except Exception as e:
+            print(f"Error configuring Gemini: {e}")
+            self.model = None
 
     def invoke(self, prompt: str) -> str:
+        if not self.model:
+            return "Error: Gemini API key not configured."
         try:
             response = self.model.generate_content(prompt)
             return (response.text or "").strip()
         except Exception as e:
             print(f"Gemini invoke error: {e}")
-            return ""
+            return f"Error invoking Gemini: {e}"
 
 
-llm = GeminiWrapper()
+class ClaudeWrapper(LLMWrapper):
+    def __init__(self, api_key):
+        if not anthropic:
+            raise ImportError("anthropic package not installed")
+        if not api_key:
+            raise ValueError("Claude API key not found")
+        self.client = anthropic.Anthropic(api_key=api_key)
+        self.model = "claude-3-5-sonnet-20241022"
+
+    def invoke(self, prompt: str) -> str:
+        try:
+            message = self.client.messages.create(
+                model=self.model,
+                max_tokens=1024,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            return message.content[0].text.strip()
+        except Exception as e:
+            print(f"Claude invoke error: {e}")
+            return f"Error invoking Claude: {e}"
+
+
+class OpenAIWrapper(LLMWrapper):
+    def __init__(self, api_key, model="gpt-4o"):
+        if not openai:
+            raise ImportError("openai package not installed")
+        if not api_key:
+            raise ValueError("OpenAI API key not found")
+        self.client = openai.OpenAI(api_key=api_key)
+        self.model = model
+
+    def invoke(self, prompt: str) -> str:
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"OpenAI invoke error: {e}")
+            return f"Error invoking OpenAI: {e}"
+
+
+class GrokWrapper(OpenAIWrapper):
+    def __init__(self, api_key):
+        if not openai:
+            raise ImportError("openai package not installed")
+        if not api_key:
+            raise ValueError("Grok API key not found")
+        self.client = openai.OpenAI(
+            api_key=api_key,
+            base_url="https://api.x.ai/v1"
+        )
+        self.model = "grok-beta"
+
+
+def get_llm_instance():
+    settings = SettingsManager.load_settings()
+    provider = settings.get('provider', 'gemini')
+    
+    try:
+        if provider == 'gemini':
+            return GeminiWrapper(settings.get('gemini_api_key'))
+        elif provider == 'claude':
+            return ClaudeWrapper(settings.get('claude_api_key'))
+        elif provider == 'openai':
+            return OpenAIWrapper(settings.get('openai_api_key'))
+        elif provider == 'grok':
+            return GrokWrapper(settings.get('grok_api_key'))
+    except Exception as e:
+        print(f"Error initializing {provider}: {e}")
+    
+    if os.environ.get('GEMINI_API_KEY'):
+        return GeminiWrapper(None)
+    
+    return GeminiWrapper(None)
+
+
+llm = get_llm_instance()
 
 chat_histories = {}
 HISTORY_MAX_TURNS = 10
@@ -671,6 +797,38 @@ def extract_command_from_response(raw_text: str) -> str:
     return validate_command(text.strip())
 
 
+@app.route('/api/settings', methods=['GET'])
+def get_settings():
+    settings = SettingsManager.load_settings()
+    masked_settings = settings.copy()
+    for key in ['gemini_api_key', 'claude_api_key', 'openai_api_key', 'grok_api_key']:
+        if masked_settings.get(key):
+            masked_settings[key] = '********' + masked_settings[key][-4:]
+        else:
+            masked_settings[key] = ''
+    return jsonify(masked_settings)
+
+
+@app.route('/api/settings', methods=['POST'])
+def update_settings():
+    data = request.get_json()
+    current_settings = SettingsManager.load_settings()
+    
+    if 'provider' in data:
+        current_settings['provider'] = data['provider']
+        
+    for key in ['gemini_api_key', 'claude_api_key', 'openai_api_key', 'grok_api_key']:
+        if data.get(key) and not data[key].startswith('********'):
+            current_settings[key] = data[key]
+            
+    SettingsManager.save_settings(current_settings)
+    
+    global llm
+    llm = get_llm_instance()
+    
+    return jsonify({'success': True})
+
+
 @app.route('/api/chat', methods=['POST'])
 def chat():
     data = request.get_json()
@@ -893,7 +1051,6 @@ def handle_menu_selection(data):
 
 if __name__ == '__main__':
     try:
-        # For development only - use gunicorn for production
         debug_mode = os.environ.get('FLASK_ENV') == 'development'
         socketio.run(app, debug=debug_mode, host='0.0.0.0', port=5000)
     finally:
